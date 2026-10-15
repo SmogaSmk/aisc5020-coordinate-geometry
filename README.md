@@ -1,6 +1,8 @@
 # Same Spectrum, Different Optimization
 
-完整第 5 部分见 [中文交接指南](docs/part5_guide.md) 和 [英文 LaTeX 报告源文件](docs/part5_report.tex)。本地验证结果随交付包提供；上传 GitHub 的操作见 [上传说明](docs/upload_to_github.md)。
+仓库：https://github.com/kvvvvvv23/aisc5020-coordinate-geometry
+
+完整第 5 部分见 [中文交接指南](docs/part5_guide.md) 和 [英文 LaTeX 报告源文件](docs/part5_report.tex)。[Module 5 Release](https://github.com/kvvvvvv23/aisc5020-coordinate-geometry/releases/tag/module5-v1) 提供报告 PDF、原始验证结果和完整交付 ZIP。协作及恢复操作见 [GitHub 使用说明](docs/upload_to_github.md)。
 
 AISC5020 小组项目：在固定 Hessian 特征值的条件下，研究坐标旋转如何影响 GD、heavy-ball momentum、Adam 和预条件方法。
 

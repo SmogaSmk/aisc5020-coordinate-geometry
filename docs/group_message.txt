@@ -1,4 +1,5 @@
-项目底座和我的第 5 部分已经整理成协作包，大家可以先解压运行；GitHub 上传后另发实际仓库链接。
+项目 GitHub 已搭好：https://github.com/kvvvvvv23/aisc5020-coordinate-geometry
+我的第 5 部分报告和验证数据：https://github.com/kvvvvvv23/aisc5020-coordinate-geometry/releases/tag/module5-v1
 
 大家先看 README 和 docs/team_plan.md，统一接口和进度。分工按群里确认的是：
 1：CHENG Zixuan，GD / momentum 理论基线
@@ -7,7 +8,7 @@
 4：HUANG Ze，预条件与统计分析
 5：HOU Kaiwen，特征坐标 Adam、复现与报告整合
 
-代码、统一接口、分工和运行方式都在 README 与 docs/team_plan.md。上传 GitHub 后，可以 fork，在自己的分支开发，再提 PR 到 main。公开链接可以查看，点击不会自动获得原仓库写入权限；需要直接推送时再单独加 collaborator。
+代码、统一接口、分工和运行方式都在 README 与 docs/team_plan.md。大家先 fork，在自己的分支开发，再提 PR 到 main。公开链接可以查看，点击不会自动获得原仓库写入权限；需要直接推送时再单独加 collaborator。
 
 先按 README 跑测试和 smoke。周日（10 月 18 日）前每人同步一个能运行的小例子、推导进度、目前的问题和下周任务。先连通二维流程，下周争取完成核心实验。每人同步整理自己部分的英文段落，最后一起合并。
 
