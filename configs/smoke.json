@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "study_status": "infrastructure_smoke_only",
+  "protocol_frozen": false,
+  "note": "Tiny integration check. These rates are illustrative, not the main-study candidate ranges or tuned rates.",
+  "seed": 5020,
+  "eigenvalues": [0.01, 1.0],
+  "angle_degrees": 30.0,
+  "max_steps": 300,
+  "tolerance": 1e-6,
+  "record_every": 1,
+  "algorithms": [
+    {"algorithm": "gd", "learning_rate": 1.5},
+    {"algorithm": "heavy_ball", "learning_rate": 0.5, "beta": 0.9},
+    {"algorithm": "adam", "learning_rate": 0.05},
+    {"algorithm": "eigenbasis_adam", "learning_rate": 0.05},
+    {"algorithm": "diagonal_gd", "learning_rate": 0.5}
+  ]
+}

@@ -1,0 +1,344 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,array}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{1.2em}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newcommand{\R}{\mathbb R}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\title{Adam in a Fixed Hessian Eigenbasis\\[0.35em]
+\large AISC5020: Module 5 Method and Verification Note}
+\author{HOU Kaiwen}
+\date{15 October 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+This module studies a controlled intervention for coordinate dependence: apply
+Adam in a fixed orthonormal eigenbasis of a positive-definite quadratic, then
+map each update back to the original coordinates. We prove exact trajectory
+correspondence with Adam on the diagonal problem, including positive numerical
+stabilization and bias correction. We distinguish the common-basis statement
+from the stronger, generally invalid claim that arbitrary eigenbases give the
+same trajectory when eigenvalues are repeated. The implementation separates
+basis preparation, residual diagnostics, optimization, and evaluation costs.
+This note documents Module 5 only; it does not report a tuned comparison of all
+team methods or claim completion of the group's main experiment.
+\end{abstract}
+
+\section{Question and controlled intervention}
+Consider
+\begin{equation}
+ f(w)=\tfrac12 w^\top H w,\qquad
+ H=VDV^\top,\qquad V^\top V=I,\qquad
+ D=\diag(\lambda_1,\ldots,\lambda_p),\quad \lambda_i>0.
+ \label{eq:problem}
+\end{equation}
+The eigenvalues determine the quadratic's spectral conditioning. They do not
+specify the axes along which Adam accumulates squared gradient components.
+Ordinary Adam is therefore an appropriate object for a coordinate experiment,
+but changing coordinates and observing different convergence curves alone does
+not identify which operation causes the difference.
+
+Our intervention fixes the coordinates used for moment accumulation. With
+$z=V^\top w$, the same objective becomes $\phi(z)=\tfrac12 z^\top Dz$.
+At update $t$, let
+\begin{equation}
+ g_t=Hw_{t-1},\qquad h_t=V^\top g_t.
+ \label{eq:gradient}
+\end{equation}
+We apply the bias-corrected Adam recurrence~\cite{adam} to $h_t$:
+\begin{align}
+ m_t&=\beta_1m_{t-1}+(1-\beta_1)h_t,
+ &v_t&=\beta_2v_{t-1}+(1-\beta_2)(h_t\odot h_t),\label{eq:moments}\\
+ \widehat m_t&=\frac{m_t}{1-\beta_1^t},
+ &\widehat v_t&=\frac{v_t}{1-\beta_2^t},\label{eq:correction}\\
+ d_t&=\frac{\widehat m_t}{\sqrt{\widehat v_t}+\epsilon\mathbf1},
+ &w_t&=w_{t-1}-\eta_tVd_t.\label{eq:update}
+\end{align}
+The square, square root, and quotient of equal-length vectors are
+componentwise; $Vd_t$ is a matrix--vector product. We use $m_0=v_0=0$,
+$\beta_1,\beta_2\in[0,1)$, a common scalar
+$\epsilon>0$ outside the square root, and shared step sizes $\eta_t>0$.
+The moments live in eigen-coordinates even though $w_t$ is stored in ambient
+coordinates. Transforming only the final direction while retaining ambient
+second moments would define a different method.
+
+\section{Exact correspondence and its scope}
+\begin{proposition}[P4: correspondence in a specified common basis]
+\label{prop:p4}
+Run \eqref{eq:gradient}--\eqref{eq:update} on $H=VDV^\top$ from $w_0=Vz_0$.
+Run ordinary Adam on $\phi(z)=\tfrac12 z^\top Dz$ from $z_0$, with the same
+parameters, step sizes, zero initial moments, and update indexing. In exact
+arithmetic, for every update $t$,
+\begin{equation}
+ w_t=Vz_t,\qquad f(w_t)=\phi(z_t).
+ \label{eq:correspondence}
+\end{equation}
+The result allows repeated eigenvalues and positive $\epsilon$.
+\end{proposition}
+\begin{proof}
+The initial points correspond by construction. Suppose $w_{t-1}=Vz_{t-1}$ and
+the two pairs of moment vectors agree. Orthogonality and
+\eqref{eq:problem} give
+\[
+ h_t=V^\top HVz_{t-1}=Dz_{t-1}=\nabla\phi(z_{t-1}).
+\]
+Thus \eqref{eq:moments} produces identical first and second moments in the two
+runs. Their scalar bias corrections and positive scalar stabilizers also agree,
+so their directions $d_t$ agree, including when a gradient component is zero.
+Consequently,
+\[
+ w_t=Vz_{t-1}-\eta_tVd_t
+     =V(z_{t-1}-\eta_td_t)=Vz_t.
+\]
+Finally, $f(Vz_t)=\tfrac12z_t^\top V^\top HVz_t=\phi(z_t)$.
+Induction proves both claims.
+\end{proof}
+
+This is a trajectory identity, not a convergence-rate theorem. It gives no
+guarantee that the chosen step size converges, that Adam outperforms GD, or that
+the additional basis information is inexpensive. It also requires a fixed
+basis: changing the basis during a run without consistently reinterpreting the
+moment history invalidates the argument.
+
+\begin{lemma}[Signed-permutation ambiguity]
+\label{lem:sign}
+Let $R$ be a signed permutation matrix and replace $V$ by $V'=VR$.
+With corresponding coordinate initialization, the two eigenbasis-Adam runs
+have the same ambient iterates in exact arithmetic.
+\end{lemma}
+\begin{proof}
+Write $P=|R|$, an unsigned permutation matrix. Coordinate gradients and first
+moments transform as $h'_t=R^\top h_t$ and $m'_t=R^\top m_t$, whereas second
+moments transform as $v'_t=P^\top v_t$. This follows inductively because
+$(R^\top h)\odot(R^\top h)=P^\top(h\odot h)$.
+Bias correction commutes with both transformations. Since $P^\top\mathbf1=
+\mathbf1$ and the denominator is permuted without a sign, the normalized
+direction obeys $d'_t=R^\top d_t$. Therefore
+$V'd'_t=VRR^\top d_t=Vd_t$, so the physical updates coincide.
+\end{proof}
+
+For a simple spectrum, every exact orthonormal eigenbasis of the same $H$
+differs by such a signed permutation. A basis recovered from $H$ alone therefore
+has the same idealized physical trajectory; aligning its signs to the generating
+basis is unnecessary. Numerically close eigenvalues require more care because
+their eigenvectors can be sensitive to small perturbations. In particular,
+mathematically distinct eigenvalues do not by themselves guarantee numerically
+resolvable eigenvectors or agreement of long floating-point trajectories.
+
+For repeated eigenvalues, an eigensolver may choose an arbitrary orthogonal
+rotation within a repeated eigenspace. Adam's componentwise square does not
+commute with a general rotation, so Lemma~\ref{lem:sign} does not apply.
+For example, let $H=I_2$, $w_0=(1,0)^\top$, and let $R$ be a rotation through
+$\pi/4$. Both $I_2$ and $R$ are valid eigenbases. At the first update their
+ambient Adam directions are, respectively,
+\[
+ \frac{(1,0)^\top}{1+\epsilon}
+ \quad\text{and}\quad
+ \frac{(1,0)^\top}{1/\sqrt2+\epsilon},
+\]
+which differ for every $\epsilon>0$. Proposition~\ref{prop:p4} remains valid when both runs use one
+specified common basis; arbitrary independent eigenbasis recovery is a
+different claim.
+
+\section{Implementation and verification protocol}
+Basis preparation is explicit and occurs before optimization. The implementation
+supports three sources. An \emph{oracle} basis is the generating $V$ and isolates
+the algebraic mechanism. An \emph{eigh} basis is obtained from the Hessian alone
+using a symmetric eigensolver; the generating rotation is not used to align its
+columns. A \emph{supplied} basis permits controlled sign, permutation, and
+degenerate-subspace tests. The selected basis is copied, validated, and held
+fixed, and a prepared object may be reused only for a matching Hessian.
+
+We distinguish basis quality from trajectory agreement. For a candidate basis
+$B=[b_1,\ldots,b_p]$ and
+$\widetilde D=\diag(b_1^\top Hb_1,\ldots,b_p^\top Hb_p)$, report
+\begin{equation}
+ r_{\rm orth}=\frac{\norm{B^\top B-I}_F}{\sqrt p},\qquad
+ r_{\rm diag}=\frac{\norm{HB-B\widetilde D}_F}{\norm H_F}.
+ \label{eq:residuals}
+\end{equation}
+Positive eigenvalues, finite arrays, dimensions, symmetry, and residual
+tolerances are checked separately. Numerical eigenvalue clusters are recorded
+as a warning about basis ambiguity; a tolerance-based cluster is not proof of
+an exactly repeated eigenvalue. The diagnostics also compare the minimum
+eigengap with a conservative Hessian-scale allowance based on residuals,
+roundoff, and the accepted validation tolerance. Stored eigenvalues may be
+distinct while the eigenvector-uncertainty flag is true. This indicator is not
+a certified forward-error bound for a particular eigensolver.
+
+For paired trajectories, retain both the ambient discrepancy
+\begin{equation}
+ e_t=\frac{\norm{w_t-Vz_t}_2}{\max(1,\norm{w_0}_2)}
+ \label{eq:trajectoryerror}
+\end{equation}
+and the absolute loss difference. A fixed initial scale avoids a misleading
+relative error whose denominator vanishes near the optimizer. Residuals in
+\eqref{eq:residuals} answer whether $B$ approximately diagonalizes $H$;
+\eqref{eq:trajectoryerror} answers a different, dynamical question. Neither
+should be reported as the other.
+
+The verification suite covers the following distinct claims:
+\begin{enumerate}
+ \item Compare every recorded iterate for a shared generating basis, with both
+ distinct and repeated spectra.
+ \item Recover a basis from $H$ alone for a distinct spectrum and retain the
+ eigensolver's signs and ordering.
+ \item Supply a signed and permuted basis to check
+ Lemma~\ref{lem:sign}; separately supply an admissible rotation within a repeated
+ eigenspace to expose the limitation.
+ \item Reject invalid bases and basis reuse with a different Hessian, and
+ count preparation and transformation work explicitly.
+\end{enumerate}
+Each numerical record should preserve the spectrum, initial point, seed,
+parameters, horizon, code version, and error definition. Module verification
+uses fixed settings to test the mechanism. It does not replace the team's
+independent tuning and statistical protocol.
+
+\subsection{Observed structural verification}
+The saved run of 15 October 2026 (08:36:01 UTC) uses seed 502015, 256 updates,
+$\eta=0.01$, $(\beta_1,\beta_2)=(0.9,0.999)$, and $\epsilon=10^{-8}$.
+There are 84 two-dimensional cases, 24 cases with $p=20$, 16 with $p=100$,
+and two declared scope controls, for 126 cases in total. The main spectra use
+$\kappa\in\{10,10^2,10^3,10^4\}$; the two-dimensional angles range from
+$0^\circ$ to $90^\circ$ in $15^\circ$ increments. Each case has one diagonal
+reference and three runs on the rotated problem: ordinary Adam, oracle-basis
+Adam, and recovered-basis Adam. Thus 504 trajectories are saved, including
+378 rotated-problem trajectories.
+
+All 250 required correspondence checks passed the preset normalized position
+tolerance $5\times10^{-8}$; Table~\ref{tab:errors} reports the observed maxima.
+The recovered-basis requirement applies to the 124 separated-spectrum cases,
+whereas the oracle common-basis requirement includes both controls. These
+settings test an identity rather than tune the methods for minimum loss.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Maximum normalized path discrepancy over required checks.}
+ \label{tab:errors}
+ \begin{tabular}{lrr}
+ \toprule
+ Method and scope & Cases & Maximum $e_t$ \\
+ \midrule
+ Oracle basis, all cases & 126 & $1.535\times10^{-12}$ \\
+ Recovered basis, separated spectra & 124 & $6.486\times10^{-13}$ \\
+ \bottomrule
+ \end{tabular}
+\end{table}
+
+The controls make the scope visible rather than silently omitting difficult
+cases. For the repeated identity problem, the recovered-basis discrepancy is
+$0.1819$, while the oracle common-basis discrepancy is $2.483\times10^{-16}$.
+For the near-repeated spectrum
+$(10^{-4},10^{-4}+10^{-11},1)$, the recovered-basis discrepancy is
+$5.637\times10^{-7}$ despite a diagonalization residual
+$4.885\times10^{-16}$. Its stored eigenvalues are distinct, but the numerical
+uncertainty flag is true. The oracle discrepancy remains
+$1.535\times10^{-12}$. This illustrates why a small backward residual and
+distinct stored eigenvalues cannot alone establish forward trajectory agreement.
+
+A separate checker recomputed all 504 saved trajectories from the saved
+problems using explicit Adam recurrences, without the production Adam update
+helper. It also independently regenerated the seeded case schedule and initial
+points, recomputed losses, summary metrics, basis residuals and timing medians,
+and checked operation counts, all 45 timing rows, and 19
+source/configuration/script hashes. Its saved verification status
+is passed. The environment was Python 3.12.14, NumPy 2.5.4, and Windows 11,
+with BLAS thread environment variables set to one.
+
+\section{Cost accounting and numerical interpretation}
+For dense $p\times p$ matrices, recovering all eigenvectors costs
+$O(p^3)$ arithmetic and $O(p^2)$ storage. Validation also contains dense
+matrix--matrix products and belongs to setup. At each optimization step,
+$V^\top g_t$ and $Vd_t$ add two dense matrix--vector products, each costing
+$O(p^2)$, as well as $O(p)$ moment operations. The common quadratic gradient
+$Hw$ already costs $O(p^2)$. Computing a loss for monitoring is additional
+evaluation work and must not be silently counted as a free gradient call.
+
+Our accounting separates basis setup, the full evaluation loop, and total
+elapsed time. The evaluation loop includes gradients, coordinate transforms,
+losses, checks, and trace bookkeeping; operation counts distinguish these
+activities, but the implementation does not time each one separately.
+Counts are more portable than timings on small matrices.
+Reusing a prepared basis avoids a second eigendecomposition but
+does not erase the first preparation cost; original setup and reuse metadata
+must remain visible. Likewise, an oracle basis removes recovery from the timed
+optimization loop by assumption, not by providing a generally free algorithm.
+
+Table~\ref{tab:timings} gives local medians from five repetitions per dimension
+and method, each with 256 updates. One untimed warm-up run per dimension and
+method is excluded from the five measured repetitions. These are descriptive
+timings, not evidence of a practical speedup. Setup and total medians are calculated
+separately, so adding component medians need not reproduce a total median.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Local median time in milliseconds. Basis-method cells show
+ setup / total; ordinary Adam has no basis setup.}
+ \label{tab:timings}
+ \begin{tabular}{rrrr}
+ \toprule
+ $p$ & Ordinary total & Oracle setup / total & Recovered setup / total \\
+ \midrule
+ 2 & 12.508 & 0.304 / 14.995 & 0.248 / 11.474 \\
+ 20 & 11.635 & 0.435 / 13.160 & 0.468 / 12.723 \\
+ 100 & 11.281 & 1.852 / 18.791 & 2.341 / 15.621 \\
+ \bottomrule
+ \end{tabular}
+\end{table}
+
+The proof uses exact arithmetic, while implementations repeatedly multiply
+floating-point matrices and accumulate moment histories. Small perturbations
+can be amplified by normalization, especially when gradients and loss are
+tiny. A long-horizon discrepancy after near-zero error is not a logical
+counterexample to Proposition~\ref{prop:p4}. It is still relevant empirical
+information: report its onset, magnitude, objective scale, and settings rather
+than hiding it or treating every late difference as a failed eigensolver.
+
+Conversely, a small decomposition residual alone does not establish a uniformly
+small trajectory discrepancy for an arbitrary horizon. This report makes no
+forward-error bound or stability theorem of that form. Interpretation should
+combine algebra, independent implementation checks, basis residuals, and the
+observed trajectories.
+
+The reproducible artifacts are \path{outputs/part5/summary.json},
+\path{correspondence.csv}, \path{basis_diagnostics.json}, \path{timing.csv},
+the saved raw trajectories, and \path{artifact_verification.json}.
+The same output directory contains \path{correspondence.pdf} and
+\path{cost.pdf}; this standalone source has no external figure dependency.
+
+\section{Integration and conclusion}
+The intervention gives the group a precise mechanism test. If ordinary Adam
+changes under a paired rotation while fixed-eigenbasis Adam tracks the diagonal
+reference over the same regime, the result supports the role of coordinatewise
+moment accumulation. That conditional interpretation must be based on actual
+paired outputs; it does not follow from a planned figure or from the theorem
+alone. Learning-rate selection, rotation sampling, uncertainty estimates, and
+comparison with preconditioning remain the responsibility of the corresponding
+team modules.
+
+For integration, Module 5 contributes a fixed-basis implementation, a proof
+with explicit assumptions, diagnostics that separate recovery from dynamics,
+and cost metadata. The exact claim is deliberately limited: a specified common
+eigenbasis restores correspondence with diagonal-coordinate Adam; a simple
+spectrum makes signed-permutation ambiguity harmless; repeated eigenspaces
+retain a genuine coordinate choice. These distinctions allow a stronger
+mechanistic explanation without claiming universal rotation invariance or an
+unmeasured practical speedup.
+
+\begin{thebibliography}{1}
+\bibitem{adam}
+D. P. Kingma and J. Ba.
+\newblock Adam: A Method for Stochastic Optimization.
+\newblock \emph{International Conference on Learning Representations}, 2015.
+\newblock \url{https://arxiv.org/abs/1412.6980}.
+\end{thebibliography}
+\end{document}

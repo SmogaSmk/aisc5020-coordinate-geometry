@@ -1,0 +1,22 @@
+{
+  "study_status": "module5_structural_verification",
+  "protocol_version": 1,
+  "seed": 502015,
+  "max_steps": 256,
+  "learning_rate": 0.01,
+  "beta1": 0.9,
+  "beta2": 0.999,
+  "epsilon": 1e-8,
+  "tolerance": 1e-6,
+  "position_error_tolerance": 5e-8,
+  "condition_numbers": [10, 100, 1000, 10000],
+  "angles_degrees": [0, 15, 30, 45, 60, 75, 90],
+  "two_dimensional_initializations": 3,
+  "higher_dimensions": [20, 100],
+  "higher_dimensional_rotations": {"20": 3, "100": 2},
+  "higher_dimensional_initializations": 2,
+  "benchmark_dimensions": [2, 20, 100],
+  "benchmark_steps": 256,
+  "benchmark_repetitions": 5,
+  "note": "Fixed-rate module-5 correspondence checks, not a tuned main-study comparison. Near-repeated and repeated spectra are explicit scope controls."
+}
