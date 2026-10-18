@@ -1,0 +1,16 @@
+{
+  "study_status": "module2_adam_diagnostic",
+  "protocol_version": 1,
+  "seed": 502002,
+  "eigenvalues": [0.1, 1.0],
+  "initial_loss": 1.0,
+  "angles_degrees": [0, 15, 30, 45, 60, 75, 90],
+  "max_steps": 50,
+  "checkpoints": [1, 2, 10, 50],
+  "gd_learning_rate": 0.5,
+  "adam_learning_rate": 0.1,
+  "beta1": 0.9,
+  "beta2": 0.999,
+  "epsilon": 1e-8,
+  "note": "Module 2 mechanism diagnostic using a fixed canonical GD gradient history; not a tuned optimizer comparison."
+}

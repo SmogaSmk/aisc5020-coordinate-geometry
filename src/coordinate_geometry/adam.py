@@ -22,15 +22,21 @@ def adam_step(state: OptimizerState, gradient: np.ndarray, config: RunConfig) ->
 def replay_directions(gradients: np.ndarray, config: RunConfig) -> np.ndarray:
     """Reconstruct A_t from a supplied (time, coordinate) history, without optimization."""
     history = np.asarray(gradients, dtype=np.float64)
+    # Create Initial Adam state
     if history.ndim != 2 or history.shape[0] == 0 or not np.all(np.isfinite(history)):
         raise ValueError("gradients must be a nonempty finite time-by-coordinate matrix")
     state = OptimizerState.initial(np.zeros(history.shape[1]))
+    # Reconstruct the history according the local 
     return np.stack([adam_direction(state, g, config) for g in history])
 
 
 def replay_defect(gradients: np.ndarray, rotation: np.ndarray, config: RunConfig) -> dict[str, np.ndarray]:
+    """
+    Collect the gradient history and calculate all update direction of Adam
+    """
     history = np.asarray(gradients, dtype=np.float64)
     base = replay_directions(history, config)
+    '''base is the Adam direction history'''
     transformed = replay_directions(history @ rotation.T, config)
     numerator = np.linalg.norm(transformed - base @ rotation.T, axis=1)
     denominator = np.linalg.norm(base, axis=1)

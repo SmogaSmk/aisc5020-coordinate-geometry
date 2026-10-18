@@ -42,6 +42,29 @@ macOS / Linux 可以运行 `python -m venv work/.venv`，再执行 `work/.venv/b
 
 本地输出保存在 `outputs/`。执行成功说明基础流程能运行；不能据此声称某个方法更好或主实验已经完成。提交实验分析时，应附运行命令、配置、seed、代码版本和输出说明。
 
+## 第 2 部分：Adam 坐标依赖诊断
+
+第 2 部分使用固定的 canonical GD 梯度历史，将它及其旋转版本分别送入从零开始的
+Adam moment accumulators。这样得到的 replay defect 隔离了逐坐标归一化本身，不会混入
+Adam 轨迹已经分叉后的梯度差异。诊断还记录普通 Adam 在匹配初始点下的逐步位置对应误差。
+
+运行数值诊断：
+
+```powershell
+.\scripts\adam_diagnostics.ps1
+```
+
+需要生成 `defect_versus_angle.png` 时，先安装绘图依赖，再运行：
+
+```powershell
+.\work\.venv\Scripts\python.exe -m pip install -e '.[plots]'
+.\scripts\adam_diagnostics.ps1 -Plot
+```
+
+配置保存在 `configs/adam_diagnostics.json`，结果写入 `outputs/adam_diagnostics/`，包括每个
+角度和步数的 numerator、denominator、relative defect、普通 Adam 位置误差、运行配置和
+汇总信息。这是机制诊断，不是收敛界、调参结果或优化器优劣排名。
+
 ## 统一接口
 
 问题使用严格凸二次型：
